@@ -1,0 +1,8 @@
+blinker
+flask
+pymysql
+python-dotenv
+simplejson
+sqlalchemy
+uwsgi
+watchdog
