@@ -111,12 +111,14 @@ class UserDoesNotExistError(UserQueryError):
 class WrongPasswordError(UserError):
     pass
 
+scrypt_n = 2
+scrypt_r = 8
+scrypt_p = 1
+
 register_email_subject = f"You have successfully registered at {project_name}"
 register_email_body = f"""
-<p>Dear user:</p>
-<br>
-<p>You have successfully registered at {project_name}. Thank you for your registration</p>
-<br>
-<p>Best regards,</p>
-<p>The {project_name} team</p>
+    <p>Dear user:</p>
+    <p>You have successfully registered at {project_name}. Thank you for your registration</p>
+    <p>Best regards,</p>
+    <p>The {project_name} Team</p>
 """

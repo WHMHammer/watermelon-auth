@@ -129,7 +129,7 @@ class User(Base):
 class Session(Base):
     __tablename__ = "session"
     _id = Column("id", BIGINT, unique=True, nullable=False, primary_key=True)
-    _user_id = Column("user_id", BIGINT, ForeignKey("user.id"),nullable=False, primary_key=True)
+    _user_id = Column("user_id", BIGINT, ForeignKey("user.id"), nullable=False, primary_key=True)
     _ip0 = Column("ip0", TINYINT, nullable=False)
     _ip1 = Column("ip1", TINYINT, nullable=False)
     _ip2 = Column("ip2", TINYINT, nullable=False)
@@ -177,26 +177,15 @@ class Session(Base):
 def encrypt_password(password, salt):
     assert_password(password)
     assert_salt(salt)
-    return scrypt(password.encode("utf-8"), salt=salt, n=2, r=8, p=1)
+    return scrypt(password.encode("utf-8"), salt=salt, n=scrypt_n, r=scrypt_r, p=scrypt_p)
 
-def exists(email, db_session=None):
+@db_wrapper(always_return=True)
+def exists(email, db_session):
     assert_email(email)
-    if not db_session:
-        try:
-            db_session = DBSession()
-            return exists(email, db_session=db_session)
-        finally:
-            db_session.close()
     return bool(db_session.query(User).filter_by(email=email).count())
 
-def create_session(user, ip, db_session=None):
-    if not db_session:
-        try:
-            db_session = DBSession()
-            create_session(user, ip, db_session=db_session)
-            return
-        finally:
-            db_session.close()
+@db_wrapper()
+def create_session(user, ip, db_session):
     session = Session()
     session.user_id = user.id
     session.ip = ip
@@ -211,14 +200,8 @@ def create_session(user, ip, db_session=None):
         else:
             return session
 
-def clear_sessions(user, timestamp=datetime.utcnow(), db_session=None): # used datetime.utcnow() instead of datetime.now(timezone.utc) to avoid comparison of offset-naive and offset-aware datetimes
-    if not db_session:
-        try:
-            db_session = DBSession()
-            clear_sessions(user, timestamp=timestamp, db_session=db_session)
-            return
-        finally:
-            db_session.close()
+@db_wrapper()
+def clear_sessions(user, db_session, timestamp=datetime.utcnow()): # used datetime.utcnow() instead of datetime.now(timezone.utc) to avoid comparison between offset-naive and offset-aware datetimes
     if timestamp is None:
         raise TimestampNullError
     if not isinstance(timestamp, datetime):
@@ -228,14 +211,8 @@ def clear_sessions(user, timestamp=datetime.utcnow(), db_session=None): # used d
     db_session.query(Session).filter(Session.user_id == user.id, Session.expire_time < timestamp).delete()
     db_session.commit()
 
-def register(email, password, ip, db_session=None):
-    if not db_session:
-        try:
-            db_session = DBSession()
-            register(email, password, ip, db_session=db_session)
-            return
-        finally:
-            db_session.close()
+@db_wrapper()
+def register(email, password, db_session, ip=None):
     if exists(email, db_session=db_session):
         raise UserExistsError(email)
     user = User()
@@ -255,16 +232,13 @@ def register(email, password, ip, db_session=None):
         except IntegrityError:
             continue
         else:
-            return user, create_session(user, ip, db_session=db_session)
+            try:
+                return user, create_session(user, ip, db_session=db_session)
+            except IPNullError:
+                return user, None
 
-def log_in(email, password, ip, db_session=None):
-    if not db_session:
-        try:
-            db_session = DBSession()
-            log_in(email, password, ip, db_session=db_session)
-            return
-        finally:
-            db_session.close()
+@db_wrapper()
+def log_in(email, password, ip, db_session):
     try:
         user = db_session.query(User).filter_by(email=email).one()
     except (MultipleResultsFound, NoResultFound):
