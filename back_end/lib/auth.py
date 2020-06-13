@@ -6,7 +6,7 @@ from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.mysql import BIGINT, BINARY, TIMESTAMP, TINYINT, VARCHAR
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from info.user import *
+from info.auth import *
 from lib import *
 
 def assert_id(id):
@@ -81,6 +81,12 @@ class User(Base):
     def __repr__(self):
         return f"User(\n\tid={repr(self.id)},\n\temail={repr(self.email)},\n\tregister_time={repr(self.register_time)}\n)"
 
+    def jsonfy(self):
+        return {
+            "id": self.id,
+            "email": self.email
+        }
+
     @hybrid_property
     def id(self):
         return self._id
@@ -139,6 +145,13 @@ class Session(Base):
     def __repr__(self):
         return f"Session(\n\tid={repr(self.id)},\n\tuser_id={repr(self.user_id)},\n\tip={repr(self.ip)},\n\texpire_time={repr(self.expire_time)}\n)"
 
+    def jsonfy(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "expire_time": int(self.expire_time.timestamp())
+        }
+
     @hybrid_property
     def id(self):
         return self._id
@@ -180,12 +193,22 @@ def encrypt_password(password, salt):
     return scrypt(password.encode("utf-8"), salt=salt, n=scrypt_n, r=scrypt_r, p=scrypt_p)
 
 @db_wrapper(always_return=True)
-def exists(email, db_session):
-    assert_email(email)
-    return bool(db_session.query(User).filter_by(email=email).count())
+def exists(db_session, user_id=None, email=None):
+    if user_id:
+        assert_id(user_id)
+        return bool(db_session.query(User).filter_by(id=user_id).count())
+    if email:
+        assert_email(email)
+        return bool(db_session.query(User).filter_by(email=email).count())
+    raise ValueError
 
 @db_wrapper()
 def create_session(user, ip, db_session):
+    if isinstance(user, int): # when user_id is passed
+        try:
+            user = db_session.query(User).filter_by(id=user_id).one()
+        except NoResultFound:
+            raise UserDoesNotExistError
     session = Session()
     session.user_id = user.id
     session.ip = ip
@@ -202,6 +225,11 @@ def create_session(user, ip, db_session):
 
 @db_wrapper()
 def clear_sessions(user, db_session, timestamp=datetime.utcnow()): # used datetime.utcnow() instead of datetime.now(timezone.utc) to avoid comparison between offset-naive and offset-aware datetimes
+    if isinstance(user, int): # when user_id is passed
+        try:
+            user = db_session.query(User).filter_by(id=user_id).one()
+        except NoResultFound:
+            raise UserDoesNotExistError
     if timestamp is None:
         raise TimestampNullError
     if not isinstance(timestamp, datetime):
@@ -212,8 +240,28 @@ def clear_sessions(user, db_session, timestamp=datetime.utcnow()): # used dateti
     db_session.commit()
 
 @db_wrapper()
+def check_session(session_id, user_id, ip, db_session):
+    ip0, ip1, ip2, ip3 = assert_ip(ip)
+    try:
+        session = db_session.query(Session).filter_by(
+            id=session_id,
+            user_id=user_id,
+            _ip0=ip0,
+            _ip1=ip1,
+            _ip2=ip2,
+            _ip3=ip3
+        ).one()
+    except NoResultFound:
+        raise WrongSessionError
+    user = db_session.query(User).filter_by(id=user_id).one()
+    if session.expire_time < datetime.utcnow():
+        clear_sessions(user, db_session=db_session)
+        raise SessionExpiredError
+    return user, session
+
+@db_wrapper()
 def register(email, password, db_session, ip=None):
-    if exists(email, db_session=db_session):
+    if exists(email=email, db_session=db_session):
         raise UserExistsError(email)
     user = User()
     user.email = email
@@ -236,6 +284,16 @@ def register(email, password, db_session, ip=None):
                 return user, create_session(user, ip, db_session=db_session)
             except IPNullError:
                 return user, None
+
+@db_wrapper()
+def deregister(user_id, db_session):
+    user = db_session.query(User).filter_by(id=user_id).one()
+    if not user:
+        raise UserDoesNotExistError
+    email = user.email
+    db_session.delete(user)
+    db_session.commit()
+    send_email(noreply, email, deregister_email_subject, deregister_email_body)
 
 @db_wrapper()
 def log_in(email, password, ip, db_session):

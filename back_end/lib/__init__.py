@@ -46,3 +46,9 @@ def send_email(sender: Dict[str, Union[str, int]], receivers: Union[str, List[st
                     body
                 ), "utf8")
             )
+
+def get_visitor_ip(r):
+    try:
+        return r.headers.get("X-Forwarded-For").split(", ")[0]
+    except AttributeError:
+        return r.remote_addr

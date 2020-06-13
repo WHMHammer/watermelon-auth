@@ -1,4 +1,4 @@
-# [back_end](./back_end.md)/user
+# [back_end](./back_end.md)/auth
 
 ## `assert_id(id)`
 
@@ -48,13 +48,15 @@ The length of `password_encrypted` is defined in `password_encrypted_length` in 
 
 Returns the encrypted (using scrypt) password in `bytes`. The parameters of scrypt are defined in `scrypt_n`, `scrypt_r`, and `scrypt_p` in /info/user.py
 
-## `exists(email, db_session=DBSession())`
+## `exists(db_session=DBSession(), user_id=None, email=None)`
+
+- `user_id`: `int`, the user ID to be checked
 
 - `email`: `str`, the email address to be checked
 
 - `db_session`: a db session returned by `DBSession()`
 
-Returns `True` if the email address has been registered before, `False` otherwise.
+Checks user ID if provided. Checks email address otherwise. Raises `ValueError` if neither is passed. Returns `True` if the user exists, `False` otherwise.
 
 ## `create_session(user, ip, db_session=DBSession())`
 

@@ -111,6 +111,15 @@ class UserDoesNotExistError(UserQueryError):
 class WrongPasswordError(UserError):
     pass
 
+class SessionError(UserError):
+    pass
+
+class SessionExpiredError(SessionError):
+    pass
+
+class WrongSessionError(ValueError, SessionError):
+    pass
+
 scrypt_n = 2
 scrypt_r = 8
 scrypt_p = 1
@@ -118,7 +127,15 @@ scrypt_p = 1
 register_email_subject = f"You have successfully registered at {project_name}"
 register_email_body = f"""
     <p>Dear user:</p>
-    <p>You have successfully registered at {project_name}. Thank you for your registration</p>
+    <p>You have successfully registered at {project_name}. Thank you for your registration.</p>
+    <p>Best regards,</p>
+    <p>The {project_name} Team</p>
+"""
+
+deregister_email_subject = f"You have successfully deregistered from {project_name}"
+deregister_email_body = f"""
+    <p>Dear user:</p>
+    <p>You have successfully deregistered from {project_name}. We wish to see you again in the future.</p>
     <p>Best regards,</p>
     <p>The {project_name} Team</p>
 """
