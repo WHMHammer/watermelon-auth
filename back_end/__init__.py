@@ -18,9 +18,10 @@ def before_all():
 
 @app.after_request
 def after_all(r):
-    db_session = flask.g.pop("db_session")
-    if db_session:
-        db_session.close()
+    try:
+        flask.g.pop("db_session").close()
+    except KeyError:
+        pass
     r.headers.set("Access-Control-Allow-Origin", "*")
     r.headers.set("Access-Control-Allow-Methods", "OPTIONS, GET, POST, PUT, DELETE")
     r.headers.set("Access-Control-Allow-Headers", "Content-Type")

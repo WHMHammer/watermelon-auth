@@ -194,10 +194,10 @@ def encrypt_password(password, salt):
 
 @db_wrapper(always_return=True)
 def exists(db_session, user_id=None, email=None):
-    if user_id:
+    if user_id is not None:
         assert_id(user_id)
         return bool(db_session.query(User).filter_by(id=user_id).count())
-    if email:
+    if email is not None:
         assert_email(email)
         return bool(db_session.query(User).filter_by(email=email).count())
     raise ValueError
