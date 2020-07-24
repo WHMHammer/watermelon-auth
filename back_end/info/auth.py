@@ -67,7 +67,7 @@ class SaltLengthError(ValueError, SaltError):
 class PasswordError(UserError):
     pass
 
-class PasswordErrorNullError(PasswordError):
+class PasswordNullError(PasswordError):
     pass
 
 class PasswordTypeError(TypeError, PasswordError):
@@ -132,10 +132,10 @@ register_email_body = f"""
     <p>The {project_name} Team</p>
 """
 
-deregister_email_subject = f"You have successfully deregistered from {project_name}"
-deregister_email_body = f"""
+delete_user_email_subject = f"You have successfully delete your account at {project_name}"
+delete_user_email_body = f"""
     <p>Dear user:</p>
-    <p>You have successfully deregistered from {project_name}. We wish to see you again in the future.</p>
+    <p>You have successfully deleted your account at {project_name}. We wish to see you again in the future.</p>
     <p>Best regards,</p>
     <p>The {project_name} Team</p>
 """

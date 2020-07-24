@@ -5,35 +5,43 @@ from simplejson import dumps
 from time import time
 from urllib.parse import unquote
 
-import lib.auth
+from lib.auth import *
 
 bp = flask.Blueprint("auth", __name__, url_prefix="/auth")
 
 @bp.route("/user", methods=("POST",))
-def register():
+def view_register_user():
     try:
         email = flask.g.form["email"]
         password = flask.g.form["password"]
     except (KeyError, TypeError):
         return "{}", 400
+    ip = get_visitor_ip(flask.request)
 
     try:
-        user, session = lib.auth.register(
-            email,
-            password,
+        user = register_user(
             db_session=flask.g.db_session,
-            ip=lib.auth.get_visitor_ip(flask.request)
+            email=email,
+            password=password,
+            ip=ip
         )
-    except lib.auth.UserError as e:
+    except UserError as e:
         return dumps({"err_msg": e.__class__.__name__}), 403
+
+    session = create_session(
+            db_session=flask.g.db_session,
+            user=user,
+            ip=ip
+    )
 
     return dumps({
         "user": user.jsonfy(),
         "session": session.jsonfy()
     })
 
-@bp.route("/user", methods=("DELETE",))
-def deregister():
+"""
+@bp.route("/user", methods=("PUT",))
+def view_update_user():
     try:
         user_id = flask.g.form["user"]["id"]
         session_id = flask.g.form["session"]["id"]
@@ -41,24 +49,50 @@ def deregister():
         return "{}", 400
 
     try:
-        user, session = lib.auth.check_session(
+        user, session = check_session(
             session_id,
             user_id,
-            lib.auth.get_visitor_ip(flask.request),
+            get_visitor_ip(flask.request),
             db_session=flask.g.db_session
         )
-    except lib.auth.UserError as e:
+    except UserError as e:
         return dumps({"err_msg": e.__class__.__name__}), 403
 
     try:
-        lib.auth.deregister(user_id)
-    except lib.auth.UserError as e:
+        update_user_email(user, email)
+"""
+
+@bp.route("/user", methods=("DELETE",))
+def view_delete_user():
+    try:
+        user_id = flask.g.form["user_id"]
+        session_id = flask.g.form["session_id"]
+    except (KeyError, TypeError):
+        return "{}", 400
+    db_session = flask.g.db_session
+
+    try:
+        user = get_user_by_session(
+            db_session=db_session,
+            session_id=session_id,
+            user_id=user_id,
+            ip=get_visitor_ip(flask.request)
+        )
+    except UserError as e:
         return dumps({"err_msg": e.__class__.__name__}), 403
-        
+
+    try:
+        delete_user(
+            db_session=db_session,
+            user=user
+        )
+    except UserError as e:
+        return dumps({"err_msg": e.__class__.__name__}), 403
+
     return "{}"
 
 @bp.route("/session", methods=("POST",))
-def log_in():
+def view_log_in():
     try:
         email = flask.g.form["email"]
         password = flask.g.form["password"]
@@ -66,13 +100,13 @@ def log_in():
         return "{}", 400
 
     try:
-        user, session = lib.auth.log_in(
-            email,
-            password,
-            lib.auth.get_visitor_ip(flask.request),
-            db_session=flask.g.db_session
+        user, session = log_in(
+            db_session=flask.g.db_session,
+            email=email,
+            password=password,
+            ip=get_visitor_ip(flask.request),
         )
-    except lib.auth.UserError as e:
+    except UserError as e:
         return dumps({"err_msg": e.__class__.__name__}), 403
 
     return dumps({
@@ -81,20 +115,18 @@ def log_in():
     })
 
 @bp.route("/session", methods=("DELETE",))
-def logout():
-    user = get_user_token(flask.g.form.get("user_token", None))
+def view_log_out():
+    try:
+        user_id = flask.g.form["user_id"]
+        session_id = flask.g.form["session_id"]
+    except (KeyError, TypeError):
+        return "{}", 400
 
-    if user is None:
-        return "{}"
-
-    cur = flask.g.db.cursor()
-
-    cur.execute("""
-        DELETE FROM sessions
-        WHERE user_id = %s AND session = %s;
-    """, (user["id"], flask.request.get_json().get("user_token")["session"]))
-
-    flask.g.db.commit()
+    log_out(
+        db_session=flask.g.db_session,
+        user=user_id,
+        session_id=session_id
+    )
 
     return "{}"
 

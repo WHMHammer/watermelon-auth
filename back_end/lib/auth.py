@@ -43,7 +43,7 @@ def assert_salt(salt):
 
 def assert_password(password):
     if password is None:
-        raise PasswordErrorNullError
+        raise PasswordNullError
     if not isinstance(password, str):
         raise PasswordTypeError(password)
 
@@ -193,7 +193,15 @@ def encrypt_password(password, salt):
     return scrypt(password.encode("utf-8"), salt=salt, n=scrypt_n, r=scrypt_r, p=scrypt_p)
 
 @db_wrapper(always_return=True)
-def exists(db_session, user_id=None, email=None):
+def user_exists(**kwargs):
+    """
+    db_session
+    user_id
+    email
+    """
+    db_session = kwargs["db_session"]
+    user_id = kwargs.get("user_id")
+    email = kwargs.get("email")
     if user_id is not None:
         assert_id(user_id)
         return bool(db_session.query(User).filter_by(id=user_id).count())
@@ -203,16 +211,45 @@ def exists(db_session, user_id=None, email=None):
     raise ValueError
 
 @db_wrapper()
-def create_session(user, ip, db_session):
-    if isinstance(user, int): # when user_id is passed
-        try:
-            user = db_session.query(User).filter_by(id=user_id).one()
-        except NoResultFound:
-            raise UserDoesNotExistError
+def get_user_by_id(**kwargs):
+    """
+    db_session
+    user_id
+    """
+    db_session = kwargs["db_session"]
+    user_id = kwargs.get("user_id")
+    assert_id(user_id)
+    user = db_session.query(User).filter_by(id=user_id).one()
+    if user is None:
+        raise UserDoesNotExistError
+    return user
+
+@db_wrapper()
+def create_session(**kwargs):
+    """
+    db_session
+    user
+    ip
+    expire_time
+    """
+    db_session = kwargs["db_session"]
+    user = kwargs.get("user")
+    if isinstance(user, int):
+        user = get_user_by_id(
+            db_session=db_session,
+            user_id=user
+        )
+    elif not isinstance(user, User):
+        raise TypeError
+    ip = kwargs.get("ip")
+    assert_ip(ip)
+    expire_time = kwargs.get("expire_time", datetime.now(timezone.utc)+timedelta(days=1))
+    assert_timestamp(expire_time)
+
     session = Session()
     session.user_id = user.id
     session.ip = ip
-    session.expire_time = datetime.now(timezone.utc)+timedelta(days=1)
+    session.expire_time = expire_time
     while True:
         session.id = randint(id_min_value, id_max_value)
         db_session.add(session)
@@ -224,23 +261,44 @@ def create_session(user, ip, db_session):
             return session
 
 @db_wrapper()
-def clear_sessions(user, db_session, timestamp=datetime.utcnow()): # used datetime.utcnow() instead of datetime.now(timezone.utc) to avoid comparison between offset-naive and offset-aware datetimes
-    if isinstance(user, int): # when user_id is passed
-        try:
-            user = db_session.query(User).filter_by(id=user_id).one()
-        except NoResultFound:
-            raise UserDoesNotExistError
-    if timestamp is None:
-        raise TimestampNullError
-    if not isinstance(timestamp, datetime):
-        raise TimestampTypeError(timestamp)
-    if timestamp.tzinfo is not None:
-        raise TimestampTimezoneError(timestamp.tzinfo)
-    db_session.query(Session).filter(Session.user_id == user.id, Session.expire_time < timestamp).delete()
+def clear_sessions(**kwargs):
+    """
+    db_session
+    user
+    time_limit
+    """
+    db_session = kwargs["db_session"]
+    user = kwargs.get("user")
+    if isinstance(user, int):
+        user = get_user_by_id(
+            db_session=db_session,
+            user_id=user
+        )
+    elif not isinstance(user, User):
+        raise TypeError
+    time_limit = kwargs.get("time_limit", datetime.now(timezone.utc))
+    assert_timestamp(time_limit)
+    db_session.query(Session).filter(Session.user_id == user.id, Session.expire_time < time_limit).delete()
     db_session.commit()
 
 @db_wrapper()
-def check_session(session_id, user_id, ip, db_session):
+def get_user_by_session(**kwargs):
+    """
+    db_session
+    session_id
+    user_id
+    ip
+    """
+    db_session = kwargs["db_session"]
+    session_id = kwargs.get("session_id")
+    assert(session_id)
+    user_id = kwargs.get("user_id")
+    assert_id(user_id)
+    user = get_user_by_id(
+        db_session=db_session,
+        user_id=user_id
+    )
+    ip = kwargs.get("ip")
     ip0, ip1, ip2, ip3 = assert_ip(ip)
     try:
         session = db_session.query(Session).filter_by(
@@ -253,15 +311,32 @@ def check_session(session_id, user_id, ip, db_session):
         ).one()
     except NoResultFound:
         raise WrongSessionError
-    user = db_session.query(User).filter_by(id=user_id).one()
     if session.expire_time < datetime.utcnow():
-        clear_sessions(user, db_session=db_session)
+        clear_sessions(
+            db_session=db_session,
+            user=user
+        )
         raise SessionExpiredError
-    return user, session
+    return user
 
 @db_wrapper()
-def register(email, password, db_session, ip=None):
-    if exists(email=email, db_session=db_session):
+def register_user(**kwargs):
+    """
+    db_session
+    email
+    password
+    """
+    db_session = kwargs["db_session"]
+    email = kwargs.get("email")
+    assert_email(email)
+    password = kwargs.get("password")
+    assert_password(password)
+    if not isinstance(password, str):
+        raise TypeError
+    if user_exists(
+        db_session=db_session,
+        email=email
+    ):
         raise UserExistsError(email)
     user = User()
     user.email = email
@@ -280,28 +355,86 @@ def register(email, password, db_session, ip=None):
         except IntegrityError:
             continue
         else:
-            try:
-                return user, create_session(user, ip, db_session=db_session)
-            except IPNullError:
-                return user, None
+            return user
 
 @db_wrapper()
-def deregister(user_id, db_session):
-    user = db_session.query(User).filter_by(id=user_id).one()
-    if not user:
-        raise UserDoesNotExistError
+def update_user_email(**kwargs):
+    """
+    db_session
+    user
+    email
+    """
+
+@db_wrapper()
+def delete_user(**kwargs):
+    """
+    db_session
+    user
+    """
+    db_session = kwargs["db_session"]
+    user = kwargs.get("user")
+    if isinstance(user, int):
+        user = get_user_by_id(
+            db_session=db_session,
+            user_id=user
+        )
+    elif not isinstance(user, User):
+        raise TypeError
+
     email = user.email
     db_session.delete(user)
     db_session.commit()
-    send_email(noreply, email, deregister_email_subject, deregister_email_body)
+    send_email(noreply, email, delete_user_email_subject, delete_user_email_body)
 
 @db_wrapper()
-def log_in(email, password, ip, db_session):
+def log_in(**kwargs):
+    """
+    db_session
+    email
+    password
+    ip
+    """
+    db_session = kwargs["db_session"]
+    email = kwargs.get("email")
+    assert_email(email)
+    password = kwargs.get("password")
+    assert_password(password)
+    ip = kwargs.get("ip")
+    assert_ip(ip)
     try:
         user = db_session.query(User).filter_by(email=email).one()
     except (MultipleResultsFound, NoResultFound):
         raise UserDoesNotExistError(email)
     if encrypt_password(password, user.salt) != user.password_encrypted:
         raise WrongPasswordError
-    clear_sessions(user, timestamp=datetime.utcnow(), db_session=db_session)
-    return user, create_session(user, ip, db_session=db_session)
+    clear_sessions(
+        db_session=db_session,
+        user=user,
+    )
+    return user, create_session(
+        db_session=db_session,
+        user=user,
+        ip=ip
+    )
+
+@db_wrapper()
+def log_out(**kwargs):
+    """
+    db_session
+    user
+    session_id
+    """
+    db_session = kwargs["db_session"]
+    user = kwargs.get("user")
+    if isinstance(user, int):
+        user = get_user_by_id(
+            db_session=db_session,
+            user_id=user
+        )
+    elif not isinstance(user, User):
+        raise TypeError
+    session_id = kwargs.get("session_id")
+    assert_id(session_id)
+
+    db_session.query(Session).filter(Session.user_id == user.id, Session.id == session_id).delete()
+    db_session.commit()

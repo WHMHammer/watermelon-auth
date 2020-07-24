@@ -15,18 +15,19 @@ Base = declarative_base()
 
 def db_wrapper(always_return: bool=False):
     def decor(foo):
-        def bar(*args, db_session=None, **kwargs):
-            if not db_session:
+        def bar(**kwargs):
+            if kwargs.get("db_session") is None:
                 try:
                     db_session = DBSession()
-                    r = foo(*args+(db_session,), **kwargs)
+                    kwargs["db_session"] = db_session
+                    r = foo(**kwargs)
                     if always_return:
                         return r
                     else:
                         return
                 finally:
                     db_session.close()
-            return foo(*args+(db_session,), **kwargs)
+            return foo(**kwargs)
         return bar
     return decor
 
