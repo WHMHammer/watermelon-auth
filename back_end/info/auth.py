@@ -132,6 +132,29 @@ register_email_body = f"""
     <p>The {project_name} Team</p>
 """
 
+change_email_new_email_subject = f"You have successfully changed your email address at {project_name}"
+change_email_new_email_body = f"""
+    <p>Dear user:</p>
+    <p>You have successfully changed your email address from %s.
+    <p>Best regards,</p>
+    <p>The {project_name} Team</p>
+"""
+change_email_old_email_subject = f"You have successfully changed your email address at {project_name}"
+change_email_old_email_body = f"""
+    <p>Dear user:</p>
+    <p>You have successfully changed your email address to %s.
+    <p>Best regards,</p>
+    <p>The {project_name} Team</p>
+"""
+
+change_password_email_subject = f"You have successfully changed your password at {project_name}"
+change_password_email_body = f"""
+    <p>Dear user:</p>
+    <p>You have successfully changed your password.
+    <p>Best regards,</p>
+    <p>The {project_name} Team</p>
+"""
+
 delete_user_email_subject = f"You have successfully delete your account at {project_name}"
 delete_user_email_body = f"""
     <p>Dear user:</p>

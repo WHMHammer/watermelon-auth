@@ -84,7 +84,8 @@ class User(Base):
     def jsonfy(self):
         return {
             "id": self.id,
-            "email": self.email
+            "email": self.email,
+            "register_time": round(self.register_time.timestamp())
         }
 
     @hybrid_property
@@ -225,6 +226,31 @@ def get_user_by_id(**kwargs):
     return user
 
 @db_wrapper()
+def user_id_to_user(**kwargs):
+    """
+    db_session
+    user
+    """
+    db_session = kwargs["db_session"]
+    user = kwargs.get("user")
+    if isinstance(user, User):
+        return user
+    if isinstance(user, int):
+        assert_id(user)
+        return get_user_by_id(
+            db_session=db_session,
+            user_id=user
+        )
+    raise TypeError
+
+def user_to_user_id(user):
+    if isinstance(user, int):
+        return user
+    if isinstance(user, User):
+        return user.id
+    raise TypeError
+
+@db_wrapper()
 def create_session(**kwargs):
     """
     db_session
@@ -233,21 +259,14 @@ def create_session(**kwargs):
     expire_time
     """
     db_session = kwargs["db_session"]
-    user = kwargs.get("user")
-    if isinstance(user, int):
-        user = get_user_by_id(
-            db_session=db_session,
-            user_id=user
-        )
-    elif not isinstance(user, User):
-        raise TypeError
+    user_id = user_to_user_id(kwargs.get("user"))
     ip = kwargs.get("ip")
     assert_ip(ip)
     expire_time = kwargs.get("expire_time", datetime.now(timezone.utc)+timedelta(days=1))
     assert_timestamp(expire_time)
 
     session = Session()
-    session.user_id = user.id
+    session.user_id = user_id
     session.ip = ip
     session.expire_time = expire_time
     while True:
@@ -268,17 +287,10 @@ def clear_sessions(**kwargs):
     time_limit
     """
     db_session = kwargs["db_session"]
-    user = kwargs.get("user")
-    if isinstance(user, int):
-        user = get_user_by_id(
-            db_session=db_session,
-            user_id=user
-        )
-    elif not isinstance(user, User):
-        raise TypeError
+    user_id = user_to_user_id(kwargs.get("user"))
     time_limit = kwargs.get("time_limit", datetime.now(timezone.utc))
     assert_timestamp(time_limit)
-    db_session.query(Session).filter(Session.user_id == user.id, Session.expire_time < time_limit).delete()
+    db_session.query(Session).filter(Session.user_id == user_id, Session.expire_time < time_limit).delete()
     db_session.commit()
 
 @db_wrapper()
@@ -364,6 +376,50 @@ def update_user_email(**kwargs):
     user
     email
     """
+    db_session = kwargs["db_session"]
+    user = user_id_to_user(
+        db_session=db_session,
+        user=kwargs.get("user")
+    )
+    email = kwargs.get("email")
+    assert_email(email)
+
+    try:
+        send_email(noreply, email, change_email_new_email_subject, change_email_new_email_body%user.email)
+    except smtplib.SMTPRecipientsRefused:
+        raise EmailInvalidError
+
+    try:
+        send_email(noreply, user.email, change_email_old_email_subject, change_email_old_email_body%email)
+    except smtplib.SMTPRecipientsRefused:
+        pass
+
+    user.email = email
+    db_session.commit()
+
+@db_wrapper()
+def update_user_password(**kwargs):
+    """
+    db_session
+    user
+    password
+    """
+    db_session = kwargs["db_session"]
+    user = user_id_to_user(
+        db_session=db_session,
+        user=kwargs.get("user")
+    )
+    password = kwargs.get("password")
+    assert_password(password)
+
+    try:
+        send_email(noreply, user.email, change_password_email_subject, change_password_email_body)
+    except smtplib.SMTPRecipientsRefused:
+        pass
+
+    user.salt = urandom(16)
+    user.password_encrypted = encrypt_password(password, user.salt)
+    db_session.commit()
 
 @db_wrapper()
 def delete_user(**kwargs):
@@ -372,14 +428,10 @@ def delete_user(**kwargs):
     user
     """
     db_session = kwargs["db_session"]
-    user = kwargs.get("user")
-    if isinstance(user, int):
-        user = get_user_by_id(
-            db_session=db_session,
-            user_id=user
-        )
-    elif not isinstance(user, User):
-        raise TypeError
+    user = user_id_to_user(
+        db_session=db_session,
+        user=kwargs.get("user")
+    )
 
     email = user.email
     db_session.delete(user)
@@ -411,7 +463,7 @@ def log_in(**kwargs):
         db_session=db_session,
         user=user,
     )
-    return user, create_session(
+    return create_session(
         db_session=db_session,
         user=user,
         ip=ip
@@ -425,16 +477,9 @@ def log_out(**kwargs):
     session_id
     """
     db_session = kwargs["db_session"]
-    user = kwargs.get("user")
-    if isinstance(user, int):
-        user = get_user_by_id(
-            db_session=db_session,
-            user_id=user
-        )
-    elif not isinstance(user, User):
-        raise TypeError
+    user_id = user_to_user_id(kwargs.get("user"))
     session_id = kwargs.get("session_id")
     assert_id(session_id)
 
-    db_session.query(Session).filter(Session.user_id == user.id, Session.id == session_id).delete()
+    db_session.query(Session).filter(Session.user_id == user_id, Session.id == session_id).delete()
     db_session.commit()

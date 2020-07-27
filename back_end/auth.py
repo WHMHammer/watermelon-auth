@@ -9,6 +9,26 @@ from lib.auth import *
 
 bp = flask.Blueprint("auth", __name__, url_prefix="/auth")
 
+@bp.route("/user", methods=("GET",))
+def get_user_profile():
+    try:
+        user_id = flask.g.form["user_id"]
+        session_id = flask.g.form["session_id"]
+    except (KeyError, TypeError):
+        return "{}", 400
+
+    try:
+        user = get_user_by_session(
+            db_session=flask.g.db_session,
+            session_id=session_id,
+            user_id=user_id,
+            ip=get_visitor_ip(flask.request)
+        )
+    except UserError as e:
+        return dumps({"err_msg": e.__class__.__name__}), 403
+
+    return user.jsonfy()
+
 @bp.route("/user", methods=("POST",))
 def view_register_user():
     try:
@@ -35,32 +55,51 @@ def view_register_user():
     )
 
     return dumps({
-        "user": user.jsonfy(),
-        "session": session.jsonfy()
+        "user_id": session.user_id,
+        "session_id": session.id
     })
 
-"""
 @bp.route("/user", methods=("PUT",))
-def view_update_user():
+def view_update_user_profile():
     try:
-        user_id = flask.g.form["user"]["id"]
-        session_id = flask.g.form["session"]["id"]
+        user_id = flask.g.form["user_id"]
+        session_id = flask.g.form["session_id"]
     except (KeyError, TypeError):
         return "{}", 400
 
+    db_session = flask.g.db_session
+
     try:
-        user, session = check_session(
-            session_id,
-            user_id,
-            get_visitor_ip(flask.request),
-            db_session=flask.g.db_session
+        user = get_user_by_session(
+            db_session=db_session,
+            session_id=session_id,
+            user_id=user_id,
+            ip=get_visitor_ip(flask.request)
         )
     except UserError as e:
         return dumps({"err_msg": e.__class__.__name__}), 403
 
-    try:
-        update_user_email(user, email)
-"""
+    if (email := flask.g.form.get("email")):
+        try:
+            update_user_email(
+                db_session=db_session,
+                user=user,
+                email=email
+            )
+        except UserError as e:
+            return dumps({"err_msg": e.__class__.__name__}), 403
+
+    if (password := flask.g.form.get("password")):
+        try:
+            update_user_password(
+                db_session=db_session,
+                user=user,
+                password=password
+            )
+        except UserError as e:
+            return dumps({"err_msg": e.__class__.__name__}), 403
+
+    return "{}"
 
 @bp.route("/user", methods=("DELETE",))
 def view_delete_user():
@@ -100,7 +139,7 @@ def view_log_in():
         return "{}", 400
 
     try:
-        user, session = log_in(
+        session = log_in(
             db_session=flask.g.db_session,
             email=email,
             password=password,
@@ -110,8 +149,8 @@ def view_log_in():
         return dumps({"err_msg": e.__class__.__name__}), 403
 
     return dumps({
-        "user": user.jsonfy(),
-        "session": session.jsonfy()
+        "user_id": session.user_id,
+        "session_id": session.id
     })
 
 @bp.route("/session", methods=("DELETE",))
