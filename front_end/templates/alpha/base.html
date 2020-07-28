@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/alpha/base.css') }}">
+    {% block alpha_head %}
+    {% endblock %}
+{% endblock %}
+
+{% block center %}
+    <div id="alpha_top" class="container-fluid">
+        <h1>This is the top part of the alpha template</h1>
+    </div>
+    <div class="container-fuild row">
+        <div id="alpha_left" class="col-2">
+            <h1>This is the left part of the alpha template</h1>
+        </div>
+        <div id="alpha_center" class="col">
+            {% block alpha_center %}{% endblock %}
+        </div>
+        <div id="alpha_right" class="col-2">
+            <h1>This is the right part of the alpha template</h1>
+        </div>
+    </div>
+    <div id="alpha_bottom" class="container-fluid">
+        <h1>This is the bottom part of the alpha template</h1>
+    </div>
+{% endblock %}
+
+{% block body %}
+    <!--script src="{{ url_for('static', filename='js/alpha/base.js') }}"></script-->
+    {% block alpha_body %}{% endblock %}
+{% endblock %}

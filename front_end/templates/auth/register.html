@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Register</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+  </head>
+  <body>
+    <!-- Here is the appearance of the webpage -->
+    <div id="form_block">
+        <div class="form-group">
+          <label for="exampleInputEmail1">Email address</label>
+          <input type="email" class="form-control" id="email_input" aria-describedby="emailHelp">
+          <small id="email_warning_label" class="form-text text-muted" hidden>Email format is not correct, please enter a valid email address</small>
+          <small id="repeat_email_warning_label" class="form-text text-muted" hidden>Email is already registered, please try another one.</small>
+          <small id="invalid_email_warning_label" class="form-text text-muted" hidden>The email you entered is invalid.</small>
+        </div>
+        <div class="form-group">
+          <label for="exampleInputPassword1">Password</label>
+          <input type="password" class="form-control" id="password_input">
+        </div>
+        <div class="form-group">
+            <label for="exampleInputPassword1">Confirm Password</label>
+            <input type="password" class="form-control" id="confirm_password_input">
+            <small id="not_match_warning_label" class="form-text text-muted" hidden>Password not matched.</small>
+          </div>
+        <button id="register_button" class="btn btn-primary">Register</button>
+      </div>
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+    <!--script src="{{ url_for('static', filename='js/register.js') }}"></script-->
+    <script src="{{ url_for('static', filename='js/auth/register.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/auth/register2.js') }}"></script>
+    </body>
+</html>

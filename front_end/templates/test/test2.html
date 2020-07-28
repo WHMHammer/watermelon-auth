@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>AJAX Sample</title>
+    </head>
+    <body>
+        <!-- This is page appearance -->
+        <input id="email_input">
+        <label id="email_warning_label" hidden>EmailNullError</label>
+        <br>
+        <input id="password_input">
+        <br>
+        <button id="register_button">Register</button>
+        
+        <script src="test2.js"></script>
+        <!-- Here is the function part -->
+        <script>
+            // We create variables, and get the values from user using function called "getElementById"
+            const email_input = document.getElementById("email_input");
+            const password_input = document.getElementById("password_input");
+            // register_button's value will be 1, 2, 3, 4; when it is 4, it means the button is clicked. Google ready state 4
+            const register_button = document.getElementById("register_button");
+
+            // when the button is clicked, here will intrig event function
+            register_button.onclick = function () {
+                // r is XMLHttpRequest, Google it if you dont know
+                let r = new XMLHttpRequest();
+                r.onreadystatechange = function () {
+                    // check readyState
+                    if (this.readyState == 4){
+                        // then check status, Google 404 if you don't know
+                        if (this.status == 400){
+                            alert(400);
+                        }
+                        else if (this.status == 200){
+                            rp = JSON.parse(this.responseText);
+                            localStorage.setItem();
+                            localStorage.setItem();
+                        }
+                        else if (this.status == 403){
+                            alert(403);
+                        }
+                    }
+                }; // here needs a colon because r.onreadystatechange is actually assigning value.
+                
+                // Google XMLHttpRequest to see the functions of open, setRequestHeader, and send
+                // request method, URL
+                r.open("POST", "http://localhost:8080/auth/user");
+                r.setRequestHeader("Content-Type","application/json");
+                r.send(JSON.stringify({
+                    // Here is a format of JSON
+                    "email": email_input.value,
+                    "password": password_input.value
+                }));
+
+            }; // here needs a colon because register_button.onclick is actually assigning value.
+        </script>
+
+
+    </body>
+</html>

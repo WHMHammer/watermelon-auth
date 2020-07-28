@@ -1,0 +1,40 @@
+#top {
+    border: 1px solid white;
+}
+
+#left {
+    background-color: black;
+    border: 1px solid white;
+    color: white
+}
+
+#right {
+    background-color: black;
+    border: 1px solid white;
+    color: white
+}
+
+#bottom {
+    background-color: gray;
+    border: 1px solid gray;
+    color: white;
+}
+
+#bottom_inner_box{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#top_nav_bar {
+    background-color: brown
+}
+
+#bottom_nav_bar {
+    background-color: gray
+}
+
+#WMicon{
+    height: 100px;
+    width: 100px;
+}
