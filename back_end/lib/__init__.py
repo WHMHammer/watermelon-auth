@@ -9,11 +9,13 @@ from typing import *
 
 from info import *
 
-engine = create_engine(f"{db_driver}://{db_user}:{db_password}@{db_host}/{db_name}")
+engine = create_engine(
+    f"{db_driver}://{db_user}:{db_password}@{db_host}/{db_name}")
 DBSession = sessionmaker(bind=engine)
 Base = declarative_base()
 
-def db_wrapper(always_return: bool=False):
+
+def db_wrapper(always_return: bool = False):
     def decor(foo):
         def bar(**kwargs):
             if kwargs.get("db_session") is None:
@@ -31,6 +33,7 @@ def db_wrapper(always_return: bool=False):
         return bar
     return decor
 
+
 def send_email(sender: Dict[str, Union[str, int]], receivers: Union[str, List[str], Tuple[str], Set[str], Dict[str, Any]], subject: str, body: str):
     with smtplib.SMTP_SSL(sender.get("smtp_server"), sender.get("port")) as conn:
         conn.login(sender.get("address"), sender.get("token"))
@@ -47,6 +50,7 @@ def send_email(sender: Dict[str, Union[str, int]], receivers: Union[str, List[st
                     body
                 ), "utf8")
             )
+
 
 def get_visitor_ip(r):
     try:

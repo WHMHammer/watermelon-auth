@@ -9,11 +9,12 @@ from lib.auth import *
 
 bp = flask.Blueprint("auth", __name__, url_prefix="/auth")
 
+
 @bp.route("/user", methods=("GET",))
 def get_user_profile():
     try:
-        user_id = flask.g.form["user_id"]
-        session_id = flask.g.form["session_id"]
+        user_id = int(flask.g.form["user_id"])
+        session_id = int(flask.g.form["session_id"])
     except (KeyError, TypeError):
         return "{}", 400
 
@@ -28,6 +29,7 @@ def get_user_profile():
         return dumps({"err_msg": e.__class__.__name__}), 403
 
     return user.jsonfy()
+
 
 @bp.route("/user", methods=("POST",))
 def view_register_user():
@@ -49,9 +51,9 @@ def view_register_user():
         return dumps({"err_msg": e.__class__.__name__}), 403
 
     session = create_session(
-            db_session=flask.g.db_session,
-            user=user,
-            ip=ip
+        db_session=flask.g.db_session,
+        user=user,
+        ip=ip
     )
 
     return dumps({
@@ -59,11 +61,12 @@ def view_register_user():
         "session_id": session.id
     })
 
+
 @bp.route("/user", methods=("PUT",))
 def view_update_user_profile():
     try:
-        user_id = flask.g.form["user_id"]
-        session_id = flask.g.form["session_id"]
+        user_id = int(flask.g.form["user_id"])
+        session_id = int(flask.g.form["session_id"])
     except (KeyError, TypeError):
         return "{}", 400
 
@@ -101,11 +104,12 @@ def view_update_user_profile():
 
     return "{}"
 
+
 @bp.route("/user", methods=("DELETE",))
 def view_delete_user():
     try:
-        user_id = flask.g.form["user_id"]
-        session_id = flask.g.form["session_id"]
+        user_id = int(flask.g.form["user_id"])
+        session_id = int(flask.g.form["session_id"])
     except (KeyError, TypeError):
         return "{}", 400
     db_session = flask.g.db_session
@@ -130,6 +134,7 @@ def view_delete_user():
 
     return "{}"
 
+
 @bp.route("/session", methods=("POST",))
 def view_log_in():
     try:
@@ -153,11 +158,12 @@ def view_log_in():
         "session_id": session.id
     })
 
+
 @bp.route("/session", methods=("DELETE",))
 def view_log_out():
     try:
-        user_id = flask.g.form["user_id"]
-        session_id = flask.g.form["session_id"]
+        user_id = int(flask.g.form["user_id"])
+        session_id = int(flask.g.form["session_id"])
     except (KeyError, TypeError):
         return "{}", 400
 
