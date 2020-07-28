@@ -6,10 +6,10 @@ id_min_value = 0
 id_max_value = 18446744073709551615
 email_max_length = 64
 password_min_length = 8
-email = "whmhammer@gmail.com"
-password = "password"
-email1 = "huw90@psu.edu"
-password1 = "PASSWORD"
+email = ""
+password = ""
+email1 = ""
+password1 = ""
 
 
 def print_error_response(r):
