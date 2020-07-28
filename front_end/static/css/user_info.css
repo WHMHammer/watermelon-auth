@@ -1,0 +1,21 @@
+#top {
+    border: 1px solid white;
+}
+
+#left {
+    background-color: gray;
+    border: 1px solid white;
+    color: white
+}
+
+#top_nav_bar {
+    background-color: brown
+}
+
+#WMicon{
+    height: 100px;
+    width: 100px;
+}
+
+
+

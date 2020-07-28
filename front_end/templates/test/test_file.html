@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/test/test_file.css') }}">
+    
+    {% block test_head %}{% endblock %}
+{% endblock %}
+
+{% block center %}
+    <!-- main part -->
+{% endblock %}
+
+{% block body %}
+    <!--script src="{{ url_for('static', filename='js/alpha/base.js') }}"></script-->
+    {% block alpha_body %}{% endblock %}
+{% endblock %}
